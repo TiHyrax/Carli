@@ -49,7 +49,7 @@ public:
       cfg.offset_rotation = 0;
       cfg.readable = true;
       cfg.invert   = false;
-      cfg.rgb_order = false;
+      cfg.rgb_order = true;
       cfg.dlen_16bit = false;
       cfg.bus_shared = true;
       _panel_instance.config(cfg);
@@ -71,9 +71,9 @@ LGFX tft;
 
 // ── 顏色 ──
 #define COLOR_BG     TFT_WHITE
-#define COLOR_RED    TFT_RED
-#define COLOR_GREEN  TFT_GREEN
-#define COLOR_YELLOW TFT_YELLOW
+#define COLOR_RED    TFT_GREEN   // ILI9488 BGR順序，GREEN實際顯示紅色
+#define COLOR_GREEN  TFT_RED     // ILI9488 BGR順序，RED實際顯示綠色
+#define COLOR_YELLOW TFT_YELLOW  // 黃色不受影響
 #define COLOR_BLACK  TFT_BLACK
 
 // ── 螢幕尺寸（橫式）──
@@ -81,6 +81,9 @@ LGFX tft;
 #define SCREEN_H 320
 
 char lastState = '?';
+char pendingState = '?';
+unsigned long pendingTime = 0;
+const unsigned long STABLE_DELAY = 500;  // 穩定 500ms 才更新螢幕
 
 void drawCircleIcon(int x, int y, int r, uint32_t color) {
   tft.fillCircle(x, y, r, color);
@@ -157,10 +160,18 @@ void setup() {
 void loop() {
   if (Serial2.available()) {
     char msg = Serial2.read();
-    if (msg != lastState && (msg == '0' || msg == '1' || msg == '2' || msg == '3' || msg == 'O')) {
-      lastState = msg;
-      drawDisplay(msg);
-      Serial.print("收到："); Serial.println(msg);
+    if (msg == '0' || msg == '1' || msg == '2' || msg == '3' || msg == 'O') {
+      if (msg != pendingState) {
+        pendingState = msg;
+        pendingTime  = millis();
+      }
     }
+  }
+
+  // 穩定 500ms 才更新螢幕
+  if (pendingState != lastState && millis() - pendingTime >= STABLE_DELAY) {
+    lastState = pendingState;
+    drawDisplay(lastState);
+    Serial.print("更新："); Serial.println(lastState);
   }
 }
