@@ -29,9 +29,9 @@ const byte LED_STATUS = 13;
 
 const int HALL_FAST    = 730;
 const int HALL_MID     = 600;
-const int HALL_SLOW    = 550;
-const int HALL_STARTUP = 550;
-const int HALL_RELEASE = 545;
+const int HALL_SLOW    = 530;
+const int HALL_STARTUP = 530;
+const int HALL_RELEASE = 525;
 
 const byte SFX_START    = 1;
 const byte SFX_FASTER   = 2;
@@ -117,9 +117,13 @@ void sendObstacleToEsp() {
 }
 
 byte getSpeedLevel(int val) {
-  if (val > HALL_FAST) return 3;
-  if (val > HALL_MID)  return 2;
-  if (val > HALL_SLOW) return 1;
+  // 加入 5 點遲滯，防止邊界跳動
+  if (val > HALL_FAST + 5)       return 3;
+  if (val > HALL_MID + 5)        return 2;
+  if (val > HALL_SLOW + 5)       return 1;
+  if (lastSpeedLevel == 3 && val > HALL_FAST - 5) return 3;
+  if (lastSpeedLevel == 2 && val > HALL_MID - 5)  return 2;
+  if (lastSpeedLevel == 1 && val > HALL_SLOW - 5) return 1;
   return 0;
 }
 
@@ -163,8 +167,6 @@ void setup() {
     Serial.println(F("DFPlayer 正常！"));
   }
   dfPlayer.volume(28);
-  delay(500);
-  dfPlayer.play(1);
   lastSentLevel = 255;
   lastEspLevel  = 255;
   sendSpeedLevel(0);
